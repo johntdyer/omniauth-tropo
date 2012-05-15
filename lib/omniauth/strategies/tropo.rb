@@ -1,6 +1,5 @@
-require 'multi_json'
 require 'omniauth-http-basic'
-
+require 'multi_json'
 module OmniAuth
   module Strategies
     class Tropo < OmniAuth::Strategies::HttpBasic
