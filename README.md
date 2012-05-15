@@ -15,3 +15,9 @@ Add :tropo provider to omniauth builder (RAILS_ROOT/config/initializers/omniauth
       provider :tropo, "http://api.tropo.com"
       # provider ...
     end
+
+### Example:
+
+    cd examples
+    rackup config.ru
+    http://localhost:9292
