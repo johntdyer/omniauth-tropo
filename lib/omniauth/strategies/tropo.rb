@@ -1,12 +1,18 @@
-require 'omniauth-http-basic'
-require 'multi_json'
+%w(omniauth-http-basic multi_json faraday).each{|lib| require lib}
+
 module OmniAuth
   module Strategies
     class Tropo < OmniAuth::Strategies::HttpBasic
 
       option :title,   "Tropo Login"
 
-      uid { get_value('id') }
+      option :role_options, {
+        :path            =>  'roles',
+        :admin_username  =>  nil,
+        :admin_password  =>  nil
+      }
+
+      uid { get_value(:id) }
 
       credentials { {:username => username, :password => password}}
 
@@ -26,23 +32,43 @@ module OmniAuth
           :job_title  => get_value('jobTitle'),
           :email      => get_value('email'),
           :address    => get_value('address'),
-          :address2   => get_value('address2')
+          :address2   => get_value('address2'),
+          :roles      => roles_enabled ? fetch_roles : nil
         }
       end
 
       protected
 
-        def api_uri
-          "#{options.endpoint}/users/#{username}"
-        end
+      def api_uri
+        "#{options.endpoint}/users/#{username}"
+      end
 
-        def json_response
-          @json_response ||= MultiJson.load(authentication_response.body, :symbolize_keys => true)
-        end
+      def json_response
+        @json_response ||= MultiJson.load(authentication_response.body, :symbolize_keys => true)
+      end
 
-        def get_value(key)
-          json_response[key.to_sym]
+      def get_value(key)
+        json_response[key.to_sym]
+      end
+
+      def roles_enabled
+        if options.role_options.admin_username && options.role_options.admin_username
+          true
+        else
+          false
         end
+      end
+
+      def fetch_roles
+        conn = Faraday.new(:url => options.endpoint) do |builder|
+          builder.request  :url_encoded
+          builder.response :logger
+          builder.adapter  :net_http
+        end
+        conn.basic_auth(options.role_options.admin_username,options.role_options.admin_password)
+        response = conn.get "/users/#{request['username']}/#{options.role_options.path}"
+        MultiJson.load(response.body).collect{|x| x["roleName"]} if response.status == 200
+      end
     end
   end
 end
